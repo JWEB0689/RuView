@@ -84,13 +84,13 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Download Intel artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ruview-macos-x64
           path: artifacts/x64
 
       - name: Download Apple Silicon artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ruview-macos-arm64
           path: artifacts/arm64
@@ -190,7 +190,7 @@ jobs:
           submodules: recursive
 
       - name: Download all artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: artifacts
 
