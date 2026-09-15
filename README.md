@@ -2,19 +2,10 @@
 
 <p align="center">
   <a href="https://cognitum.one/seed">
-    <img src="assets/ruview-seed.png" alt="RuView - WiFi DensePose" width="100%">
+    <img src="assets/ruview-hero-h3-v3.gif" alt="RuView - WiFi DensePose — animated visualization of real-time pose estimation, breathing, and heart-rate sensing through WiFi" width="100%">
   </a>
 </p>
-<p align="center">
-  <a href="https://cognitum.one/marketplace">
-    <img src="assets/musica-promo.png" alt="Cognitum Musica" width="100%">
-  </a>
-</p>
-<p align="center">
-  <a href="https://github.com/ruvnet/RuCelium">
-    <img src="assets/rucelium-hero.png" alt="RuCelium — environmental intelligence" width="100%">
-  </a>
-</p>
+
 
 ## **See through walls with WiFi** ##
 
@@ -49,25 +40,26 @@ Every WiFi router already fills your space with radio waves. When people move, b
 <details>
 <summary><strong>RuView MetaHarness</strong> — guided operation for humans and AI agents</summary>
 
-The RuView-specific metaharness we created is published as [`@ruvnet/ruview`](harness/ruview/README.md). It provides source-cited guidance, guarded Claude Code/Codex agents, deterministic verification, and an honesty check for accuracy claims.
+The RuView-specific metaharness we created is published as [`@ruvnet/ruview`](harness/ruview/README.md). It provides source-cited guidance, guarded Claude Code/Codex agents, deterministic verification, an honesty check for accuracy claims, and an explicitly granted OAuth-only Cognitum Spaces read.
 
 ```bash
 # Check the local setup and get source-cited guidance
-npx @ruvnet/ruview@0.3.1 doctor
-npx @ruvnet/ruview@0.3.1 guidance --topic sensing --query "model loading"
+npx @ruvnet/ruview@0.4.0 doctor
+npx @ruvnet/ruview@0.4.0 guidance --topic sensing --query "model loading"
 
 # Run a read-only RuView agent through Codex
-npx @ruvnet/ruview@0.3.1 agent run --host codex --repo . \
+npx @ruvnet/ruview@0.4.0 agent run --host codex --repo . \
   --prompt "Find the nearest tests and cite the source files"
 
 # Search or verify the reviewed contributor brain
-npx @ruvnet/ruview@0.3.1 brain search --query "calibration"
-npx @ruvnet/ruview@0.3.1 brain verify --repo .
+npx @ruvnet/ruview@0.4.0 brain search --query "calibration"
+npx @ruvnet/ruview@0.4.0 brain verify --repo .
 
 # Check claims, replay the deterministic proof, or expose the MCP server
-npx @ruvnet/ruview@0.3.1 claim-check --file REPORT.md
-npx @ruvnet/ruview@0.3.1 verify
-npx @ruvnet/ruview@0.3.1 mcp start
+npx @ruvnet/ruview@0.4.0 claim-check --file REPORT.md
+npx @ruvnet/ruview@0.4.0 verify
+npx @ruvnet/ruview@0.4.0 spaces
+npx @ruvnet/ruview@0.4.0 mcp start
 ```
 
 Agent runs are read-only by default. Workspace writes require both `--allow-write` and `--confirm`; retrieved brain content is evidence, not authority.
@@ -223,7 +215,7 @@ huggingface-cli download ruvnet/wifi-densepose-pretrained --local-dir models/wif
 
 | Consumer | Format used | Status |
 |----------|-------------|--------|
-| Python training / evaluation / embedding extraction | `model.safetensors` | ✅ Works — load with `safetensors.torch.load_file` |
+| Python training / evaluation / embedding extraction | `model.safetensors` | ⚠️ The published file's header is NUL-padded, which the reference `safetensors.torch.load_file` rejects (issue [#1522](https://github.com/ruvnet/RuView/issues/1522)) — pending a corrected re-upload. `csi-embed-v2.safetensors` in the same repo is unaffected and loads normally. |
 | Inspect / re-export the bundle | `model.rvf.jsonl` (line-by-line JSON) | ✅ Works — plain JSONL |
 | Sensing-server `--model <PATH>` flag | native RVF, `model.safetensors`, or `model.rvf.jsonl` | ✅ Native RVF loads directly; safetensors and JSONL auto-convert in memory |
 
@@ -244,8 +236,8 @@ See the measured benchmarks, witness records, and one-command reproducibility ch
 |------|-------|---------|
 | **MM-Fi pose model (SOTA)** | [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) | 82.69% torso-PCK@20 (single) · 83.59% (ensemble+TTA) · 75K-param micro variant 74.30% |
 | **AetherArena benchmark Space** | [`ruvnet/aether-arena`](https://huggingface.co/spaces/ruvnet/aether-arena) | self-correcting, auditable MM-Fi leaderboard |
-| **Full MM-Fi study (honest picture)** | [`docs/benchmarks/mmfi-wifi-sensing-study.md`](docs/benchmarks/mmfi-wifi-sensing-study.md) | pose + action; zero-shot cross-subject ~64%, +~30 s in-room calibration → 72.2% |
-| **Efficiency frontier** | [`docs/benchmarks/wifi-pose-efficiency-frontier.md`](docs/benchmarks/wifi-pose-efficiency-frontier.md) | SOTA-beating WiFi pose in a 20 KB int4 edge model |
+| **Full MM-Fi study (honest picture)** | [`docs/benchmarks/mmfi-wifi-sensing-study.md`](docs/benchmarks/mmfi-wifi-sensing-study.md) | pose + action; zero-shot cross-subject ~64%, labeled in-room calibration → 72.2% |
+| **Efficiency frontier** | [`docs/benchmarks/wifi-pose-efficiency-frontier.md`](docs/benchmarks/wifi-pose-efficiency-frontier.md) | SOTA-beating MM-Fi pose in a ~37 KB int4 model; live ESP32 compatibility not established |
 | **Pretrained encoder** | [`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained) | 82.3% held-out temporal-triplet, 8 KB int4 |
 | **Reproducible proof (Trust Kill Switch)** | [`archive/v1/data/proof/verify.py`](archive/v1/data/proof/verify.py) + [`expected_features.sha256`](archive/v1/data/proof/expected_features.sha256) | one-command deterministic pipeline replay (SHA-256 of output vs published hash) |
 | **Benchmark-proof ADR** | [ADR-168](docs/adr/ADR-168-benchmark-proof.md) | how the numbers are produced and verified |
@@ -487,11 +479,19 @@ Neural Network: processed signals → 17 body keypoints + vital signs + room mod
 Output: real-time pose, breathing, heart rate, room fingerprint, drift alerts
 ```
 
-No training cameras required — the [Self-Learning system (ADR-024)](docs/adr/ADR-024-contrastive-csi-embedding-model.md) bootstraps from raw WiFi data alone. [MERIDIAN (ADR-027)](docs/adr/ADR-027-cross-environment-domain-generalization.md) ensures the model works in any room, not just the one it trained in.
+The [Self-Learning system (ADR-024)](docs/adr/ADR-024-contrastive-csi-embedding-model.md) provides
+camera-free representation-learning components. Cross-room pose remains a separate, data-gated
+problem: [MERIDIAN (ADR-027)](docs/adr/ADR-027-cross-environment-domain-generalization.md) is
+**Proposed**, while the measured calibration reference requires labeled CSI/keypoint pairs and
+model-specific adapters. See the [model compatibility boundary](docs/user-guide.md#model-and-capture-compatibility).
 
 ---
 
 ## 🏢 Use Cases & Applications
+
+> **Safety boundary:** these are research and prototype applications, not medical devices,
+> emergency systems, or safety-certified controls. Vital-sign and pose outputs require independent
+> validation on the exact hardware, room, subjects, and failure conditions before operational use.
 
 WiFi sensing works anywhere WiFi exists. No new hardware in most cases — just software on existing access points or a $8 ESP32 add-on. Because there are no cameras, deployments avoid privacy regulations (GDPR video, HIPAA imaging) by design.
 
@@ -527,7 +527,7 @@ WiFi sensing works anywhere WiFi exists. No new hardware in most cases — just 
 | Use Case | What It Does | Hardware | Key Metric | Edge Module |
 |----------|-------------|----------|------------|-------------|
 | **Smart home automation** | Room-level presence triggers (lights, HVAC, music) that work through walls — no dead zones, no motion-sensor timeouts | 2-3 ESP32-S3 nodes ($24) | Through-wall range ~5m | [HVAC Presence](docs/edge-modules/building.md), [Lighting Zones](docs/edge-modules/building.md) |
-| **Fitness & sports** | Rep counting, posture correction, breathing cadence during exercise — no wearable, no camera in locker rooms | 3+ ESP32-S3 mesh | Pose: 17 keypoints | [Breathing Sync](docs/edge-modules/exotic.md), [Gait Analysis](docs/edge-modules/medical.md) |
+| **Fitness & sports research** | Explore motion and breathing cadence without a wearable or camera; reliable posture correction requires a validated compatible pose model | 3+ ESP32-S3 mesh + edge host | Prototype; no live S3 pose accuracy claim | [Breathing Sync](docs/edge-modules/exotic.md), [Gait Analysis](docs/edge-modules/medical.md) |
 | **Childcare & schools** | Naptime breathing monitoring, playground headcount, restricted-area alerts — privacy-safe for minors | 2-4 ESP32-S3 per zone | Breathing: ±1 BPM | [Sleep Apnea](docs/edge-modules/medical.md), [Perimeter Breach](docs/edge-modules/security.md) |
 | **Event venues & concerts** | Crowd density mapping, crush-risk detection via breathing compression, emergency evacuation flow tracking | Multi-AP mesh (4-8 APs) | Density per m² | [Customer Flow](docs/edge-modules/retail.md), [Panic Motion](docs/edge-modules/security.md) |
 | **Stadiums & arenas** | Section-level occupancy for dynamic pricing, concession staffing, emergency egress flow modeling | Enterprise AP grid | 15-20 per AP mesh | [Dwell Heatmap](docs/edge-modules/retail.md), [Queue Length](docs/edge-modules/retail.md) |
@@ -694,7 +694,7 @@ claude --plugin-dir ./plugins/ruview
 
 Verify the plugin structure: `bash plugins/ruview/scripts/smoke.sh`. Full details: [`plugins/ruview/README.md`](plugins/ruview/README.md).
 
-For the portable RuView MetaHarness, use `npx @ruvnet/ruview@0.3.1`; the quick commands and fuller explanation are in the collapsed MetaHarness section near the top of this README and in [`harness/ruview/`](harness/ruview/README.md).
+For the portable RuView MetaHarness, use `npx @ruvnet/ruview@0.4.0`; the quick commands and fuller explanation are in the collapsed MetaHarness section near the top of this README and in [`harness/ruview/`](harness/ruview/README.md).
 
 </details>
 
@@ -719,6 +719,8 @@ Start with the user, build, and calibration guides; expand for the full referenc
 | [Semantic Primitives — Precision/Recall](docs/integrations/semantic-primitives-metrics.md) | Per-primitive F1 on the held-out paired-capture set: someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement, multi-room. |
 | [Claude Code / Codex Plugin](plugins/ruview/README.md) | The `ruview` plugin + marketplace — skills, `/ruview-*` commands, agents, and the Codex prompt mirror |
 | [Portable harness — `npx @ruvnet/ruview`](harness/ruview/README.md) | MetaHarness-minted, host-portable RuView operator harness — `ruview.*` MCP tools + the MEASURED-vs-CLAIMED honesty guardrail enforced in code ([ADR-182](docs/adr/ADR-182-npx-ruview-harness-via-metaharness.md)). A lighter, multi-host companion to the in-repo plugin. |
+| [CSI Frame Selection — Measured](docs/csi-frame-selection-measured.md) | Which rate gate actually buys cross-node pairing, measured on a nine-node ESP32-C6 fleet as a 2x2 factorial in three Latin-square blocks. Selecting frames by 802.11 `rx_seq` roughly doubled pairing (+31.7 pp) while mesh-time alignment bought +0.5 pp, inside noise. Includes the trade it makes, a prediction that turned out wrong, the limits of the measurement, and `run_arms.py` so the comparison can be re-run rather than taken on trust. |
+| [ESP32-C6 Firmware Runbook](firmware/esp32-csi-node/RUNBOOK.md) | What to run, in what order, and what to check: the three-file build that keeps OTA rollback compiled in, a five-key pre-flash gate, which flash regions OTA can and cannot reach, a single-board diagnostic flash with a revert path, and the tunables whose right value depends on your house rather than on the chip. |
 | [Architecture Decisions](docs/adr/README.md) | 205 ADRs — why each technical choice was made, organized by domain (hardware, signal processing, ML, platform, infrastructure) |
 | [Domain Models](docs/ddd/README.md) | 8 DDD models (RuvSense, Signal Processing, Training Pipeline, Hardware Platform, Sensing Server, WiFi-Mat, CHCI, rvCSI) — bounded contexts, aggregates, domain events, and ubiquitous language |
 | [rvCSI — edge RF sensing runtime](https://github.com/ruvnet/rvcsi) | Rust-first / TypeScript-accessible / hardware-abstracted CSI runtime: multi-source ingestion (incl. real nexmon_csi `.pcap` from a **Raspberry Pi 5** / Pi 4 / Pi 3B+ — CYW43455 / BCM43455c0) → validation → DSP → typed events → RuVector RF memory ([ADR-095](docs/adr/ADR-095-rvcsi-edge-rf-sensing-platform.md), [ADR-096](docs/adr/ADR-096-rvcsi-ffi-crate-layout.md), [domain model](docs/ddd/rvcsi-domain-model.md)). Now its own repo — [`ruvnet/rvcsi`](https://github.com/ruvnet/rvcsi) — vendored here under `vendor/rvcsi`; 9 `rvcsi-*` crates on crates.io, `@ruv/rvcsi` on npm, plus a Claude Code plugin. |

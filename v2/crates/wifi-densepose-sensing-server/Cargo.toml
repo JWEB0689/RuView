@@ -26,10 +26,11 @@ tower-http = { version = "0.6", features = ["fs", "cors", "set-header"] }
 tokio = { workspace = true, features = ["full", "process"] }
 futures-util = "0.3"
 ruvector-mincut = { workspace = true }
+mdns-sd = "0.11"
 
 # Serialization
 serde = { workspace = true }
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
 
 # Logging
 tracing.workspace = true
@@ -46,6 +47,8 @@ clap = { workspace = true }
 # from `lib.rs` so the Python `[aether]` wheel can bind it without this server's
 # Axum/tokio/worldgraph/ruvector tree.
 wifi-densepose-aether = { version = "0.3.0", path = "../wifi-densepose-aether" }
+wifi-densepose-core = { workspace = true, features = ["serde"] }
+wifi-densepose-physics = { workspace = true }
 
 # Multi-BSSID WiFi scanning pipeline (ADR-022 Phase 3)
 wifi-densepose-wifiscan = { version = "0.3.0", path = "../wifi-densepose-wifiscan" }
@@ -108,7 +111,7 @@ rand = "0.8"
 # client (ADR-115 §10 references). `rustls` is preferred over openssl on
 # Windows to keep parity with the rest of the workspace (`ureq` above also
 # uses rustls).
-rumqttc   = { version = "0.24", default-features = false, features = ["use-rustls"], optional = true }
+rumqttc   = { package = "rumqttc-v4-next", version = "0.34", default-features = false, features = ["use-rustls-ring"], optional = true }
 
 # `otel` feature — OTLP log export (`telemetry` module). Same gating
 # principle as `mqtt`: the heavy exporter stack (opentelemetry SDK +

@@ -33,10 +33,81 @@
 #define EDGE_MAX_IQ_BYTES     1024  /**< Max I/Q payload per slot. */
 #define EDGE_PHASE_HISTORY_LEN 256  /**< Phase history buffer depth. */
 #define EDGE_TOP_K            8     /**< Top-K subcarriers to track. */
-#define EDGE_MAX_SUBCARRIERS  128   /**< Max subcarriers per frame. */
+/**
+ * Max subcarriers per frame the edge pipeline will process.
+ *
+ * Target-conditional since 2026-08-28. The original 128 was an ESP32-S3
+ * assumption: pre-HE chips report at most 128 CSI bins. ADR-110 onboarded the
+ * ESP32-C6 to the *capture* path but not to this one, and a C6 associated to an
+ * HE-capable AP delivers HE20 frames with 256 bins (iq_len = 512 bytes).
+ *
+ * `process_frame()` guards with `n_subcarriers > EDGE_MAX_SUBCARRIERS -> return`,
+ * so on C6 every frame was rejected and the whole edge pipeline â€” vitals,
+ * presence, fall detection, per-slot counting â€” silently did nothing. The Edge
+ * DSP task started, logged its banner, and never processed a frame. Confirmed
+ * on hardware: no edge_proc log past init and no vitals packet ever reaching
+ * the sink.
+ *
+ * HE-capable parts get 256; pre-HE parts keep 128 so they don't pay ~3.5 KB of
+ * .bss they can never use. CONFIG_SOC_WIFI_HE_SUPPORT is the same switch
+ * csi_collector.c uses to pick its rx_ctrl layout.
+ */
+#if CONFIG_SOC_WIFI_HE_SUPPORT
+#define EDGE_MAX_SUBCARRIERS  256   /**< HE20 carries 256 CSI bins (C6/C5). */
+#else
+#define EDGE_MAX_SUBCARRIERS  128   /**< Pre-HE parts (S3 etc). */
+#endif
+
+
+/* ---- Measured sample-rate tracking ----
+ *
+ * The connected-STA probe produces up to 50 CSI opportunities per second,
+ * while contention and callback gating make the delivered cadence variable.
+ * Temporal filters must follow measured time rather than a fixed frame-rate
+ * assumption. The 60 Hz estimator ceiling leaves jitter headroom above the
+ * qualified 50 Hz callback limit. A one-second frame-count window represents
+ * bursty but valid WiFi arrivals more accurately than averaging only selected
+ * inter-frame intervals. */
+#define EDGE_SAMPLE_RATE_MIN_HZ 8.0f
+#define EDGE_SAMPLE_RATE_MAX_HZ 60.0f
+#define EDGE_SAMPLE_RATE_EMA_ALPHA 0.25f
+#define EDGE_SAMPLE_RATE_WINDOW_MIN_US 1000000U
+#define EDGE_SAMPLE_RATE_WINDOW_MAX_US 3000000U
+
+static inline float edge_sample_rate_window_update(float current_hz,
+                                                   uint32_t frame_intervals,
+                                                   uint32_t elapsed_us)
+{
+    if (frame_intervals == 0 || elapsed_us < EDGE_SAMPLE_RATE_WINDOW_MIN_US ||
+        elapsed_us > EDGE_SAMPLE_RATE_WINDOW_MAX_US) {
+        return current_hz;
+    }
+
+    float instant_hz = (float)frame_intervals * 1000000.0f / (float)elapsed_us;
+    if (instant_hz < EDGE_SAMPLE_RATE_MIN_HZ) instant_hz = EDGE_SAMPLE_RATE_MIN_HZ;
+    if (instant_hz > EDGE_SAMPLE_RATE_MAX_HZ) instant_hz = EDGE_SAMPLE_RATE_MAX_HZ;
+    float next_hz = current_hz + EDGE_SAMPLE_RATE_EMA_ALPHA * (instant_hz - current_hz);
+    if (next_hz < EDGE_SAMPLE_RATE_MIN_HZ) return EDGE_SAMPLE_RATE_MIN_HZ;
+    if (next_hz > EDGE_SAMPLE_RATE_MAX_HZ) return EDGE_SAMPLE_RATE_MAX_HZ;
+    return next_hz;
+}
 
 /* ---- Multi-person ---- */
 #define EDGE_MAX_PERSONS      4     /**< Max simultaneous persons. */
+
+/**
+ * Enforce the wire-level occupancy invariant.
+ *
+ * A subcarrier slot estimate is supporting evidence only. It cannot assert an
+ * occupant when the independently debounced presence gate is false. Keeping
+ * this helper in the public firmware header lets host tests exercise the exact
+ * function used by the device build.
+ */
+static inline uint8_t edge_evidence_person_count(bool presence, uint8_t active_count)
+{
+    if (!presence) return 0;
+    return active_count > EDGE_MAX_PERSONS ? EDGE_MAX_PERSONS : active_count;
+}
 
 /* ---- Multi-person counting gates (issue #998) ----
  *
@@ -237,6 +308,12 @@ bool edge_enqueue_csi(const uint8_t *iq_data, uint16_t iq_len,
  * @return true if valid vitals data is available.
  */
 bool edge_get_vitals(edge_vitals_pkt_t *pkt);
+
+/**
+ * Return the timestamp-derived CSI cadence used to design temporal filters.
+ * This is diagnostic evidence, not the raw callback or network delivery rate.
+ */
+float edge_get_sample_rate_hz(void);
 
 /**
  * Get multi-person vitals array.

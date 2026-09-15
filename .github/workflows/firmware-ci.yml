@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           submodules: recursive
       - name: Check firmware version.txt == tag
@@ -75,7 +75,7 @@ jobs:
             artifact_pt: partition-table-c6.bin
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           submodules: recursive
 
@@ -92,12 +92,11 @@ jobs:
           idf.py set-target ${{ matrix.target }}
           idf.py build
 
-      - name: Build and run host-side ADR-110 unit tests
+      - name: Build and run host-side firmware unit tests
         if: matrix.variant == 'c6-4mb'
         working-directory: firmware/esp32-csi-node/test
         run: |
-          make test_adr110
-          ./test_adr110
+          make host_tests
 
       - name: Verify binary size budget
         working-directory: firmware/esp32-csi-node
@@ -162,10 +161,14 @@ jobs:
           mkdir -p release-staging
           cp build/esp32-csi-node.bin                      release-staging/${{ matrix.artifact_app }}
           cp build/partition_table/partition-table.bin     release-staging/${{ matrix.artifact_pt }}
-          if [ "${{ matrix.variant }}" = "8mb" ]; then
-            cp build/bootloader/bootloader.bin             release-staging/bootloader.bin
-            cp build/ota_data_initial.bin                  release-staging/ota_data_initial.bin
-          fi
+          cp build/bootloader/bootloader.bin               release-staging/bootloader.bin
+          cp build/ota_data_initial.bin                    release-staging/ota_data_initial.bin
+          cp version.txt                                   release-staging/version.txt
+          (cd release-staging && sha256sum \
+            "${{ matrix.artifact_app }}" \
+            "${{ matrix.artifact_pt }}" \
+            bootloader.bin ota_data_initial.bin version.txt \
+            > SHA256SUMS.txt)
           ls -la release-staging/
 
       - name: Check QEMU ESP32-S3 support status
@@ -175,8 +178,27 @@ jobs:
           echo "See: https://github.com/espressif/qemu/wiki"
 
       - name: Upload firmware artifact (${{ matrix.variant }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: esp32-csi-node-firmware-${{ matrix.variant }}
           path: firmware/esp32-csi-node/release-staging/
           retention-days: 90
+
+  build-c6-idf6:
+    name: Build XIAO C6 external antenna (ESP-IDF 6.0.2)
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.0.2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          submodules: recursive
+
+      - name: Build the IDF 6 canary image
+        working-directory: firmware/esp32-csi-node
+        run: |
+          . $IDF_PATH/export.sh
+          idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32c6;sdkconfig.defaults.xiao-external" set-target esp32c6
+          idf.py build
+          test "$(stat -c%s build/esp32-csi-node.bin)" -le $((1152 * 1024))
+          strings build/esp32-csi-node.bin | grep -F "external U.FL"

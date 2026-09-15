@@ -63,6 +63,32 @@ static uint32_t s_send_ok = 0;
 static uint32_t s_send_fail = 0;
 static uint32_t s_rate_skip = 0;
 
+#ifndef CONFIG_CSI_SELF_PING_HZ
+#define CONFIG_CSI_SELF_PING_HZ 50
+#endif
+
+#if CONFIG_CSI_SELF_PING_HZ < 10 || CONFIG_CSI_SELF_PING_HZ > 50
+#error "CONFIG_CSI_SELF_PING_HZ must stay within the hardware-qualified 10-50 Hz range"
+#endif
+
+#define CSI_SELF_PING_INTERVAL_MS (1000U / CONFIG_CSI_SELF_PING_HZ)
+
+#ifndef CONFIG_EDGE_DSP_SAMPLE_HZ
+#if CONFIG_IDF_TARGET_ESP32C6
+#define CONFIG_EDGE_DSP_SAMPLE_HZ 8
+#else
+#define CONFIG_EDGE_DSP_SAMPLE_HZ 20
+#endif
+#endif
+
+#if CONFIG_EDGE_DSP_SAMPLE_HZ < 8 || CONFIG_EDGE_DSP_SAMPLE_HZ > 50
+#error "CONFIG_EDGE_DSP_SAMPLE_HZ must stay within the supported 8-50 Hz range"
+#endif
+
+#define EDGE_DSP_MIN_INTERVAL_US (1000000U / CONFIG_EDGE_DSP_SAMPLE_HZ)
+static int64_t s_next_edge_enqueue_us = 0;
+static uint32_t s_edge_rate_skip = 0;
+
 /**
  * Minimum interval between UDP sends in microseconds.
  * CSI callbacks can fire hundreds of times per second in promiscuous mode.
@@ -88,6 +114,9 @@ static int64_t s_last_send_us = 0;
  */
 #define CSI_MIN_PROCESS_INTERVAL_US  (20 * 1000)  /* 50 Hz */
 static int64_t s_last_process_us = 0;
+/* Mesh-epoch window index of the last accepted frame. UINT64_MAX means "none
+ * yet", which no real bucket can collide with. */
+static uint64_t s_last_gate_bucket = UINT64_MAX;
 static uint32_t s_early_drop = 0;
 
 /* ---- ADR-029: Channel-hop state ---- */
@@ -237,8 +266,16 @@ size_t csi_serialize_frame(const wifi_csi_info_t *info, uint8_t *buf, size_t buf
     buf[19] = 0;
 #endif
 
-    /* I/Q data */
+    /* I/Q data. ESP-IDF documents that the first four CSI bytes are invalid
+     * when first_word_invalid is set. Never let those hardware artifacts feed
+     * either the host or edge DSP path. Preserve the fixed ADR-018 geometry by
+     * zeroing rather than removing bytes, and mark the sanitation in bit 5. */
     memcpy(&buf[CSI_HEADER_SIZE], info->buf, iq_len);
+    if (info->first_word_invalid && iq_len > 0) {
+        size_t invalid_len = iq_len < 4 ? iq_len : 4;
+        memset(&buf[CSI_HEADER_SIZE], 0, invalid_len);
+        buf[19] |= CSI_FLAG_FIRST_WORD_SANITIZED;
+    }
 
     return frame_size;
 }
@@ -251,9 +288,53 @@ static void wifi_csi_callback(void *ctx, wifi_csi_info_t *info)
     (void)ctx;
 
     /* Early rate gate: drop excess callbacks to ~50 Hz to prevent
-     * SPI flash cache crash in WiFi ISR (wDev_ProcessFiq). */
+     * SPI flash cache crash in WiFi ISR (wDev_ProcessFiq).
+     *
+     * HOW the rate is limited decides whether cross-node fusion is possible.
+     *
+     * The original gate is "at least 20 ms since MY last accept". Each node
+     * therefore has an independent phase: node A can accept at t=0,20,40 ms
+     * while node B accepts at 7,27,47. Both are perfectly healthy and both hit
+     * 50 Hz, yet they accept disjoint frames and nothing can be paired.
+     *
+     * MEASURED 2026-08-30, two boards side by side: they HEARD the same
+     * transmissions 72% of the time but only 25% of accepted frames were
+     * common. The frames were there; the gate was throwing away the pairing.
+     *
+     * So gate on a bucket of the MESH-ALIGNED epoch instead: every node takes
+     * the first frame it hears in the same absolute 20 ms window. Two nodes
+     * that heard the same frame now both accept it. Mesh sync is good to
+     * roughly 490 us against a 20 ms bucket -- about 2.5% of a window -- so
+     * boundary disagreements are rare.
+     *
+     * Falls back to the original elapsed-time gate whenever mesh sync is not
+     * valid (no leader heard yet, or a node that just booted), because an
+     * unsynced epoch would otherwise gate on a meaningless number. A node
+     * running unsynced simply gets the old behaviour rather than no gate.
+     *
+     * The half-interval floor below keeps the crash protection honest: bucket
+     * gating alone could accept at the end of one window and the start of the
+     * next, back to back. The floor bounds that to ~100 Hz for a single pair
+     * while the average stays at 50 Hz. Do not remove it; the gate exists for
+     * a crash, not for tidiness. */
     int64_t now_us = esp_timer_get_time();
-    if ((now_us - s_last_process_us) < CSI_MIN_PROCESS_INTERVAL_US) {
+    bool take;
+#ifdef CONFIG_CSI_GATE_MESH_ALIGNED
+    if (c6_sync_espnow_is_valid()) {
+        uint64_t bucket = c6_sync_espnow_get_epoch_us()
+                        / (uint64_t)CSI_MIN_PROCESS_INTERVAL_US;
+        take = (bucket != s_last_gate_bucket)
+            && ((now_us - s_last_process_us) >= CSI_MIN_PROCESS_INTERVAL_US / 2);
+        if (take) {
+            s_last_gate_bucket = bucket;
+        }
+    } else {
+        take = (now_us - s_last_process_us) >= CSI_MIN_PROCESS_INTERVAL_US;
+    }
+#else
+    take = (now_us - s_last_process_us) >= CSI_MIN_PROCESS_INTERVAL_US;
+#endif
+    if (!take) {
         s_early_drop++;
         return;
     }
@@ -300,10 +381,34 @@ static void wifi_csi_callback(void *ctx, wifi_csi_info_t *info)
         }
     }
 
-    /* ADR-039: Enqueue raw I/Q into edge processing ring buffer. */
-    if (info->buf && info->len > 0) {
-        edge_enqueue_csi((const uint8_t *)info->buf, (uint16_t)info->len,
-                         (int8_t)info->rx_ctrl.rssi, info->rx_ctrl.channel);
+    /* ADR-039 / ADR-347: Raw CSI stays at the independent network cadence,
+     * while the on-device Tier 1/2 pipeline receives a uniform, sustainable
+     * stream. Enqueuing every burst frame overloaded the unicore C6 DSP and
+     * turned 30-40 callback pps into an irregular approximately 8 Hz subset. */
+    if (frame_len > CSI_HEADER_SIZE) {
+        if (s_next_edge_enqueue_us == 0) {
+            s_next_edge_enqueue_us = now_us;
+        }
+
+        if (now_us >= s_next_edge_enqueue_us) {
+            /* Reuse the sanitized ADR-018 payload. Feeding info->buf here
+             * would reintroduce first_word_invalid artifacts on device. */
+            (void)edge_enqueue_csi(&frame_buf[CSI_HEADER_SIZE],
+                                   (uint16_t)(frame_len - CSI_HEADER_SIZE),
+                                   (int8_t)info->rx_ctrl.rssi, info->rx_ctrl.channel);
+
+            /* Preserve the configured sample clock instead of resetting it to
+             * each irregular callback. With roughly 35 raw callbacks per
+             * second, a last-seen 100 ms gate selected every fourth callback
+             * and drifted to roughly 8 Hz. Advancing the deadline by complete
+             * periods alternates the available callbacks around the configured
+             * phase and prevents both drift and catch-up bursts. */
+            int64_t periods = ((now_us - s_next_edge_enqueue_us) /
+                               EDGE_DSP_MIN_INTERVAL_US) + 1;
+            s_next_edge_enqueue_us += periods * EDGE_DSP_MIN_INTERVAL_US;
+        } else {
+            s_edge_rate_skip++;
+        }
     }
 
     /* ADR-110 §A0.11/§A0.12 — Emit a sync-packet every N CSI frames so the
@@ -411,7 +516,7 @@ static void csi_start_self_ping(void)
     esp_ping_config_t cfg = ESP_PING_DEFAULT_CONFIG();
     cfg.target_addr     = target;
     cfg.count           = ESP_PING_COUNT_INFINITE;
-    cfg.interval_ms     = 20;     /* 50 Hz -> ~50 received OFDM replies/sec */
+    cfg.interval_ms     = CSI_SELF_PING_INTERVAL_MS;
     cfg.data_size       = 1;
     cfg.task_stack_size = 4096;
 
@@ -424,7 +529,8 @@ static void csi_start_self_ping(void)
 
     if (esp_ping_new_session(&cfg, &cbs, &s_self_ping) == ESP_OK && s_self_ping != NULL) {
         esp_ping_start(s_self_ping);
-        ESP_LOGI(TAG, "self-ping started -> %s @50Hz (CSI OFDM source, fix #521/#954)", gw_str);
+        ESP_LOGI(TAG, "self-ping started -> %s @%dHz (CSI OFDM source, fix #521/#954)",
+                 gw_str, CONFIG_CSI_SELF_PING_HZ);
     } else {
         ESP_LOGW(TAG, "self-ping: esp_ping_new_session failed");
         s_self_ping = NULL;
@@ -592,6 +698,8 @@ void csi_collector_init(void)
 
     ESP_LOGI(TAG, "CSI collection initialized (node_id=%u, channel=%u)",
              (unsigned)s_node_id, (unsigned)csi_channel);
+    ESP_LOGI(TAG, "edge DSP cadence=%dHz; raw CSI network cadence remains independent",
+             CONFIG_EDGE_DSP_SAMPLE_HZ);
 
     /* RuView#521/#954: start the connected-STA traffic source so the CSI engine
      * receives a guaranteed OFDM unicast floor even when promiscuous capture is
@@ -640,6 +748,20 @@ uint16_t csi_collector_get_send_fail_count(void)
 {
     uint32_t f = s_send_fail;
     return (f > 0xFFFFu) ? 0xFFFFu : (uint16_t)f;
+}
+
+/* The gate here is fixed at compile time (mesh-aligned bucketing, falling
+ * back to elapsed time when unsynced), so there is no mode or period to
+ * report. Return the explicit sentinel rather than a number that reads as
+ * a real setting. */
+uint8_t csi_collector_get_gate_mode(void)
+{
+    return CSI_GATE_NOT_CONFIGURABLE;
+}
+
+uint8_t csi_collector_get_gate_seq_period(void)
+{
+    return CSI_GATE_NOT_CONFIGURABLE;
 }
 
 /* ---- ADR-029: Channel hopping ---- */
