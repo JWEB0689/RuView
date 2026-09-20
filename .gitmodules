@@ -12,7 +12,7 @@
 	branch = main
 [submodule "vendor/rvcsi"]
 	path = vendor/rvcsi
-	url = https://github.com/ruvnet/rvcsi
+	url = https://github.com/JWEB0689/rvcsi
 	branch = main
 [submodule "v2/crates/ruv-neural"]
 	path = v2/crates/ruv-neural
