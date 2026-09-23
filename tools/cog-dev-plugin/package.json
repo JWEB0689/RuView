@@ -1,0 +1,47 @@
+{
+  "name": "@cognitum/cog-dev",
+  "version": "0.1.0",
+  "description": "Claude Code plugin and CLI for the Cognitum Seed dev/test/deploy/ops loop. Wires Seed MCP into Claude / Claude Code sessions.",
+  "type": "module",
+  "bin": {
+    "cog-dev": "./bin/cli.js"
+  },
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    ".claude-plugin",
+    "agents",
+    "bin",
+    "commands",
+    "skills",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "node bin/cli.js"
+  },
+  "keywords": [
+    "cognitum",
+    "seed",
+    "mcp",
+    "claude-code",
+    "claude-plugin",
+    "iot",
+    "wifi-sensing",
+    "cogs",
+    "wasm"
+  ],
+  "author": "Cognitum <dev@cognitum.one>",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

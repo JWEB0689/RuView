@@ -1,0 +1,30 @@
+{
+  "name": "cog-dev",
+  "description": "Claude Code plugin for the Cognitum Seed dev/test/deploy/ops loop. Wires this seed's MCP into your Claude / Claude Code session.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cognitum",
+    "url": "https://cognitum.one"
+  },
+  "homepage": "https://cognitum.one",
+  "license": "Apache-2.0",
+  "keywords": [
+    "cognitum",
+    "seed",
+    "mcp",
+    "claude-code",
+    "claude-plugin",
+    "iot",
+    "cogs",
+    "wasm"
+  ],
+  "mcpServers": {
+    "cognitum-seed": {
+      "command": "node",
+      "args": ["bin/cli.js", "mcp", "serve"],
+      "env": {
+        "COGNITUM_SEED_URL": "http://169.254.42.1"
+      }
+    }
+  }
+}
