@@ -15,10 +15,11 @@ on:
       - master
   pull_request:
   workflow_dispatch:
+
 jobs:
   fix-markers:
     name: Verify fix markers
-    runs-on: tenki-standard-small-2c-4g
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

@@ -24,10 +24,11 @@ on:
       - 'v2/crates/wifi-densepose-bfld/**'
       - '.github/workflows/bfld-mqtt-integration.yml'
   workflow_dispatch:
+
 jobs:
   mqtt-live-broker:
     name: cargo test --features mqtt (live mosquitto)
-    runs-on: tenki-standard-small-2c-4g
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     services:
@@ -42,6 +43,7 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+
     env:
       BFLD_MQTT_BROKER: tcp://localhost:1883
       CARGO_TERM_COLOR: always
