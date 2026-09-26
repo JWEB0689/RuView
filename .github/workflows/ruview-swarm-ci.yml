@@ -29,7 +29,7 @@ jobs:
   # ── Feature-matrix tests ─────────────────────────────────────────────────
   tests:
     name: tests (${{ matrix.features.label }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -59,7 +59,7 @@ jobs:
   # ── Clippy: zero warnings in the crate's own code ────────────────────────
   clippy:
     name: clippy (-D warnings, --no-deps)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -94,7 +94,7 @@ jobs:
   # ── Build the GPU training binary (train feature) ────────────────────────
   train-bin:
     name: build train_marl bin
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -130,7 +130,7 @@ jobs:
   # ── ITAR + publish guards ────────────────────────────────────────────────
   export-control-guard:
     name: ITAR / publish guard
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

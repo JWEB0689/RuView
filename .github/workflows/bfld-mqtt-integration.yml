@@ -28,7 +28,7 @@ on:
 jobs:
   mqtt-live-broker:
     name: cargo test --features mqtt (live mosquitto)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
 
     services:

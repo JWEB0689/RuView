@@ -18,7 +18,7 @@ jobs:
   # so this job gates the PR and retains the exact machine-readable report.
   rust-audit:
     name: Rust Dependency Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -44,7 +44,7 @@ jobs:
   # Static Application Security Testing (SAST)
   sast:
     name: Static Application Security Testing
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     permissions:
       security-events: write
@@ -121,7 +121,7 @@ jobs:
   # Dependency vulnerability scanning
   dependency-scan:
     name: Dependency Vulnerability Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     permissions:
       security-events: write
@@ -186,7 +186,7 @@ jobs:
   # Container security scanning
   container-scan:
     name: Container Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     if: github.event_name == 'push' || github.event_name == 'schedule'
     permissions:
@@ -241,7 +241,7 @@ jobs:
   # Infrastructure as Code security scanning
   iac-scan:
     name: Infrastructure Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     permissions:
       security-events: write
@@ -277,7 +277,7 @@ jobs:
   # Secret scanning
   secret-scan:
     name: Secret Scanning
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     permissions:
       security-events: write
@@ -316,7 +316,7 @@ jobs:
   # License compliance scanning
   license-scan:
     name: License Compliance Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     steps:
     - name: Checkout code
@@ -353,7 +353,7 @@ jobs:
   # Security policy compliance
   compliance-check:
     name: Security Policy Compliance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     steps:
     - name: Checkout code
@@ -401,7 +401,7 @@ jobs:
   # Notification and reporting
   security-report:
     name: Security Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true   # third-party scanners are flaky / SARIF uploads can 403; don't gate the PR
     needs: [sast, dependency-scan, container-scan, iac-scan, secret-scan, license-scan, compliance-check]
     if: always()

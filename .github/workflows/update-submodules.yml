@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -47,7 +47,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "--- submodule pointer changes ---"
             git submodule status --recursive || true
-            git diff --submodule=log -- vendor/ || true
+            git diff --submodule=log || true
           fi
 
       - name: Create PR with updates
@@ -55,7 +55,7 @@ jobs:
         run: |
           BRANCH="chore/update-submodules-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$BRANCH"
-          git add vendor/
+          git add -u
           git commit -m "chore: update vendor submodules to latest upstream"
           git push origin "$BRANCH"
           gh pr create \

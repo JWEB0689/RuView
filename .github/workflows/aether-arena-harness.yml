@@ -27,7 +27,7 @@ permissions:
 jobs:
   harness-gate:
     name: Run AA scorer harness (determinism gate)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: v2

@@ -22,7 +22,7 @@ jobs:
   # rule shouldn't gate PRs to the Rust workspace.
   code-quality:
     name: Code Quality & Security
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true
     steps:
     - name: Checkout code
@@ -79,7 +79,7 @@ jobs:
   # Rust Workspace Tests
   rust-tests:
     name: Rust Workspace Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout code
       uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -193,7 +193,7 @@ jobs:
   # workspace. Blocking, and fast — no browser, no install step.
   ui-tests:
     name: UI JavaScript Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout code
       uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -212,7 +212,7 @@ jobs:
   # the archive is frozen reference, not blocking the Rust workspace PRs.
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -312,7 +312,7 @@ jobs:
   # proper locust suite is added under archive/v1/tests/performance/.
   performance-test:
     name: Performance Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [test]
     continue-on-error: true
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -382,7 +382,7 @@ jobs:
   # workflow, so it doesn't gate the rest of the pipeline.
   docker-build:
     name: Docker Build & Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [code-quality, test, rust-tests]
     continue-on-error: true
     steps:
@@ -455,7 +455,7 @@ jobs:
   # API Documentation
   docs:
     name: API Documentation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [docker-build]
     if: github.ref == 'refs/heads/main'
     permissions:
@@ -500,7 +500,7 @@ jobs:
   # Notification
   notify:
     name: Notify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [code-quality, test, rust-tests, performance-test, docker-build, docs]
     if: always()
     permissions:

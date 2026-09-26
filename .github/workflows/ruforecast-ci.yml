@@ -56,7 +56,7 @@ env:
 jobs:
   contract-rust-189:
     name: Forecast contract and feature-off boundary (Rust 1.89)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
       - name: Checkout recursively
@@ -239,7 +239,7 @@ jobs:
 
   hosted-boundaries-rust-189:
     name: Forecast hosted boundaries and privacy contract (Rust 1.89)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
       - name: Checkout recursively
@@ -448,7 +448,7 @@ jobs:
 
   burn-cpu-rust-192:
     name: Forecast Burn CPU tests and bench compile (Rust 1.92)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 90
     steps:
       - name: Checkout recursively
@@ -582,7 +582,7 @@ jobs:
 
   burn-cuda-compile-rust-192:
     name: Forecast Burn CUDA/WGPU compile checks only (Rust 1.92)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - name: Checkout recursively

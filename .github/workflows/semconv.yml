@@ -24,7 +24,7 @@ on:
 jobs:
   semconv:
     name: semconv (weaver)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     env:
       WEAVER_VERSION: v0.23.0
       # sha256 of weaver-x86_64-unknown-linux-gnu.tar.xz for WEAVER_VERSION
