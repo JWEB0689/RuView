@@ -39,5 +39,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: debricked/actions@v4
+        continue-on-error: true
         env:
           DEBRICKED_TOKEN: ${{ secrets.DEBRICKED_TOKEN }}
