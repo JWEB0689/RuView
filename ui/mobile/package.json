@@ -15,7 +15,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.15.10",
     "@react-navigation/native": "^7.1.31",
-    "@types/three": "^0.183.1",
+    "@types/three": "^0.186.0",
     "axios": "^1.18.0",
     "expo": "~55.0.31",
     "expo-status-bar": "~55.0.4",
