@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   pr_agent_job:
-    if: ${{ github.event.sender.type != 'Bot' }}
+    if: ${{ (github.event_name == 'pull_request') || (github.event_name == 'issue_comment' && github.event.issue.pull_request) }}
     runs-on: ubuntu-latest
     name: Run PR-Agent on PR or comment
     steps:
@@ -27,10 +27,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG.MODEL: "gemini/gemini-3.8-flash"
-          CONFIG.FALLBACK_MODELS: "['gemini/gemini-3.1-flash-lite']"
+          CONFIG.FALLBACK_MODELS: '["gemini/gemini-2.5-flash", "gemini/gemini-2.5-flash-lite"]'
           PR_REVIEWER.REQUIRE_ALL_TESTS_PASS: "false"
           PR_CODE_SUGGESTIONS.NUM_CODE_SUGGESTIONS_PER_CHUNK: 4
-          github_action_config.push_commands: '["/review", "/improve"]'
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "true"
+          github_action_config.auto_improve: "true"
+          github_action_config.handle_push_trigger: "true"
+          github_action_config.push_commands: '["/review", "/improve", "/autofix"]'
           pr_code_suggestions.commitable_code_suggestions: "true"
           pr_reviewer.require_security_review: "true"
           pr_reviewer.require_tests_review: "true"
