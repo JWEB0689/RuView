@@ -127,4 +127,16 @@ ignore = [
     "RUSTSEC-2025-0081",   # unic-char-property
     "RUSTSEC-2025-0098",   # unic-ucd-version
     "RUSTSEC-2025-0100",   # unic-ucd-ident
+
+    # -----------------------------------------------------------------------
+    # zip <9.0.0 — RUSTSEC-2026-0367 / 0368 / 0369
+    # Privilege-escalation findings in extraction APIs. Current lockfile pulls
+    # zip 0.6/6/7 transitively via optional ML backends and training tooling
+    # (tch/torch-sys, candle-core, ndarray-npy). RuView does not accept
+    # untrusted ZIP archives through these paths in production runtime.
+    # Mitigation: keep usage on trusted model/data artifacts only and track a
+    # full upgrade to dependency trees that resolve to zip >= 9.
+    "RUSTSEC-2026-0367",   # zip: SUID/SGID preservation on extract
+    "RUSTSEC-2026-0368",   # zip: symlink target traversal on extract
+    "RUSTSEC-2026-0369",   # zip: chmod via unconstrained symlink target
 ]
