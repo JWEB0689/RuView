@@ -29,9 +29,10 @@ jobs:
       run: cargo install cargo-audit --locked --version 0.22.2
 
     - name: Audit the checked-in Rust lockfile
+      working-directory: v2
       run: |
         set -o pipefail
-        cargo audit --file v2/Cargo.lock --json | tee v2/cargo-audit.json
+        cargo audit --file Cargo.lock --json | tee cargo-audit.json
 
     - name: Upload Rust advisory report
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
