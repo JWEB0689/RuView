@@ -1,0 +1,81 @@
+name: Workflow Failure to Auto-PR
+
+# Per-repo trigger: ANY workflow failure on the default branch becomes a PR.
+# This expands the old scheduled-only fixer: push, dispatch, schedule and
+# merge failures all count. It ignores its own runs and the PR-Agent runs
+# to avoid loops, and the engine skips infra failures + duplicates.
+
+on:
+  workflow_run:
+    workflows:
+      - "AetherArena harness gate (ADR-149)"
+      - ".github/workflows/ai-code-reviewer.yml"
+      - "Bench Regression Guard"
+      - "BFI Research Tools"
+      - "BFLD MQTT Integration"
+      - "Continuous Deployment"
+      - "Continuous Integration"
+      - "GitHub Clone Tracking → data/clone-data.rvf"
+      - "Cog HA-Matter Release"
+      - "CSI data policy (ADR-299)"
+      - "Dashboard a11y + cross-browser"
+      - "nvsim Dashboard → GitHub Pages"
+      - "Desktop Release"
+      - "Firmware CI"
+      - "Firmware QEMU Tests (ADR-061)"
+      - "Fix-Marker Regression Guard"
+      - "iPhone LiDAR integration"
+      - "Model release gate (ADR-298)"
+      - "ADR-115 MQTT integration tests"
+      - "Nightly SOTA research agent"
+      - "npm packages"
+      - "nvsim-server → ghcr.io"
+      - "pip-release"
+      - "Point Cloud Viewer → GitHub Pages"
+      - "PR-Agent + Sign-off"
+      - "Python Package CI"
+      - "README visual asset validation"
+      - "W1700K RF diagnostics"
+      - "RuForecast Rust CI"
+      - "ruview device e2e"
+      - "RuView harness flywheel"
+      - "ruview-kernel npm"
+      - "ruview npm release"
+      - "ruview-swarm CI guard"
+      - "Security Scanning"
+      - "semconv"
+      - "wifi-densepose sensing-server → Docker Hub + ghcr.io"
+      - "three.js demos → GitHub Pages"
+      - "Update vendor submodules"
+      - "Verify Pipeline Determinism"
+      - "Copilot"
+      - "GitHub Advanced Security"
+      - "Copilot cloud agent"
+      - "Dependabot Updates"
+      - "Dependency Graph"
+      - "CodeQL"
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  fix:
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+      !contains(github.event.workflow_run.name, 'Auto-PR') &&
+      !contains(github.event.workflow_run.name, 'Auto-Fixer') &&
+      !contains(github.event.workflow_run.name, 'PR Agent')
+    uses: JWEB0689/pr-agent-settings/.github/workflows/reusable_auto_pr.yml@main
+    with:
+      mode: failure
+      run_id: ${{ github.event.workflow_run.id }}
+      workflow_name: ${{ github.event.workflow_run.name }}
+      head_sha: ${{ github.event.workflow_run.head_sha }}
+      run_url: ${{ github.event.workflow_run.html_url }}
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
